@@ -5,6 +5,7 @@ hub_bp = Blueprint("hub", __name__)
 @hub_bp.route("/hub")
 def hub():
     if "user" in session:
-        return render_template("hub.html", username=session["user"])
+        print(session)
+        return render_template("hub.html", username=session["user"]['userinfo']['name'])
     else:
         return redirect(url_for("login.login"))

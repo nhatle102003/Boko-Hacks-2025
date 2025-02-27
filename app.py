@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, url_for, session, redirect
 from extensions import db
 from routes.home import home_bp
 from routes.hub import hub_bp
@@ -17,10 +17,25 @@ from models.note import Note
 from models.admin import Admin
 from models.file import File  
 from sqlalchemy import inspect
+
+
+from authlib.integrations.flask_client import OAuth
 import os
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
+
+oauth = OAuth(app)
+oauth.register(
+    'google',
+    client_id  = os.getenv("GOOGLE_CLIENT_ID"),
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET"),
+    redirect_uri = os.getenv("GOOGLE_REDIRECT_URL"),
+    server_metadata_url = "https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={
+        'scope': "openid email profile https://www.googleapis.com/auth/gmail.readonly"
+    }
+)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///boko_hacks.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -43,6 +58,16 @@ app.register_blueprint(files_bp)
 app.register_blueprint(captcha_bp)
 app.register_blueprint(news_bp)
 app.register_blueprint(retirement_bp)  
+
+@app.route("/google-login")
+def google_login():
+    return oauth.google.authorize_redirect(redirect_uri=url_for("google_callback", _external = True))
+
+@app.route("/signin-google")
+def google_callback():
+    token = oauth.google.authorize_access_token()
+    session["user"] = token
+    return redirect(url_for("hub.hub"))
 
 def setup_database():
     """Setup database and print debug info"""
